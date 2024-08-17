@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('email');
             $table->string('otp');
+            $table->string('pin');
             $table->string('verify')->nullable();
             $table->timestamps();
         });

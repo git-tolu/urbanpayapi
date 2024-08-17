@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'createUser']);
+Route::post('/logout', [UserController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [UserController::class, 'logout']);
     Route::post('/refresh', [UserController::class, 'refresh']);
     Route::get('/me', [UserController::class, 'me']);
     Route::post('/verifyOtp', [UserController::class, 'verifyOtp']);
@@ -33,6 +33,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/addMoney', [UserController::class, 'addMoney']);
     Route::post('/transactionGet', [UserController::class, 'transactionGet']);
     Route::post('/transactionGetALL', [UserController::class, 'transactionGetALL']);
+    Route::post('/createCard', [UserController::class, 'createCard']);
+    Route::post('/cardGetTransactions', [UserController::class, 'cardGetTransactions']);
+    Route::post('/cardGetSingleTransactions', [UserController::class, 'cardGetSingleTransactions']);
+    Route::post('/getCardById', [UserController::class, 'getCardById']);
+    Route::post('/getCustomerCards', [UserController::class, 'getCustomerCards']);
+    Route::post('/customerCardGetDetails', [UserController::class, 'customerCardGetDetails']);
     Route::post('/UserdetailsByteBridge', [UserController::class, 'UserdetailsByteBridge']);
     Route::post('/BuyData', [UserController::class, 'BuyData']);
     Route::post('/fetchDataTransaction', [UserController::class, 'fetchDataTransaction']);
@@ -44,5 +50,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/getCableSubscription', [UserController::class, 'getCableSubscription']);
     Route::post('/validateIUC', [UserController::class, 'validateIUC']);
     Route::post('/validateMeter', [UserController::class, 'validateMeter']);
-    Route::post('/createCard', [UserController::class, 'createCard']);
 });

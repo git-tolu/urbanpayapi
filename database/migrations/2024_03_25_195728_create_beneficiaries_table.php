@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('beneficiaries', function (Blueprint $table) {
             $table->id();
-            $table->string('user_id');
+            $table->string('transfer_user_id');
             $table->string('wallet_id');
             $table->string('transaction_id');
             $table->string('reference');
