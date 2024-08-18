@@ -121,7 +121,6 @@ class UserController extends Controller
                     $response = Http::withHeaders($headers)->post($url, $body);
                     $responseData = $response->json(); // Return JSON response from the API
 
-
                     // create deposit account
                     $url = 'https://api.sandbox.sudo.cards/accounts';
 
@@ -147,8 +146,8 @@ class UserController extends Controller
                         'email' => $validatedData['email'],
                         'username' => $validatedData['username'],
                         'phoneno' => $validatedData['phoneno'],
-                        'password' => Hash::make($validatedData['password']),
-                        'pin' => Hash::make($validatedData['pin']),
+                        'password' => $validatedData['password'],
+                        'pin' => $validatedData['pin'],
                         'otp' => $otp,
                         'firstName' => $firstname,
                         'lastName'   => $lastname,
@@ -211,8 +210,9 @@ class UserController extends Controller
                     // Send notfication email to user containing the OTP
                     Mail::to($user->email)->send(new notificationMail('Account Creation', 'Your Account has been created succesfully.'));
                     // Create a Sanctum token
+                    Auth::attempt($validatedData);
+                    Auth::user();
                     $token = $user->createToken('auth_token')->plainTextToken;
-                    $user = Auth::user();
 
                     return response()->json([
                         'message' => 'User registered successfully',
@@ -336,8 +336,13 @@ class UserController extends Controller
     public function pin(Request $request)
     {
         try {
+            // get accountid from session
+            $session = Auth::user();
 
-            $email = $request->session()->get('email');
+            $email = $session['email'];
+
+            $wallet = wallet::where('account_email', $email);
+
 
             if ($email) {
                 # code...
@@ -356,7 +361,7 @@ class UserController extends Controller
                 $title = "Welcome back, {$user->firstName} {$user->lastName}";
                 $msg = 'You have successfully logged in.';
                 $notification = notifications::create([
-                    'user_id' => $request->session()->get('user_id'),
+                    'user_id' => $session['user_id'],
                     'title' => $title,
                     'message' => $msg
                 ]);
@@ -382,7 +387,13 @@ class UserController extends Controller
 
     public function verifyOtp(Request $request)
     {
-        $email = $request->session()->get('email');
+        // get accountid from session
+        $session = Auth::user();
+
+        $email = $session['email'];
+
+        $wallet = wallet::where('account_email', $email);
+
 
         $user = User::where('email', $email)->first();
         $request->validate([
@@ -410,6 +421,13 @@ class UserController extends Controller
     {
 
         try {
+            // get accountid from session
+            $session = Auth::user();
+
+            $email = $session['email'];
+
+            $wallet = wallet::where('account_email', $email);
+
             // Retrieve the user from the current database
             $user = User::findOrFail($id);
 
@@ -429,7 +447,7 @@ class UserController extends Controller
             $title = "User Deleted";
             $msg = 'The user has been successfully deleted.';
             $notification = notifications::create([
-                'user_id' => $request->session()->get('user_id'),
+                'user_id' => $session['user_id'],
                 'title' => $title,
                 'message' => $msg
             ]);
@@ -565,8 +583,13 @@ class UserController extends Controller
 
     public function updateUserProfile(Request $request)
     {
+
+        // get accountid from session
         $session = Auth::user();
+
         $email = $session['email'];
+
+        $wallet = wallet::where('account_email', $email);
 
         $request->validate([
             'name' => 'required',
@@ -594,7 +617,7 @@ class UserController extends Controller
             $title = "Profile Updated Successfully!";
             $msg = 'Profile Updated Successfully!';
             $notification = notifications::create([
-                'user_id' => $request->session()->get('user_id'),
+                'user_id' => $session['user_id'],
                 'title' => $title,
                 'message' => $msg
             ]);
@@ -710,7 +733,7 @@ class UserController extends Controller
             $title = "Profile Updated Successfully!";
             $msg = 'Profile Updated Successfully!';
             $notification = notifications::create([
-                'user_id' => $request->session()->get('user_id'),
+                'user_id' => $session['user_id'],
                 'title' => $title,
                 'message' => $msg
             ]);
@@ -852,24 +875,24 @@ class UserController extends Controller
 
     public function sendMoney(Request $request)
     {
-        // try {
-            $validatedData = $request->validate([
-                'bankIdOrBankCode' => 'required|string',
-                'accountNumber' => 'required|string',
-                'reference' => 'string',
-                'bank_name' => 'required|string',
-                'account_name' => 'required|string',
-                'amount' => 'required|string',
-                'narration' => 'required|string',
-            ]);
+        try {
+        $validatedData = $request->validate([
+            'bankIdOrBankCode' => 'required|string',
+            'accountNumber' => 'required|string',
+            'reference' => 'string',
+            'bank_name' => 'required|string',
+            'account_name' => 'required|string',
+            'amount' => 'required|string',
+            'narration' => 'required|string',
+        ]);
+            # code...
             // get accountid from session
             $session = Auth::user();
 
             $email = $session['email'];
-
-            $wallet = wallet::where('account_email', $email);
-            $wallet2 = wallet::where('account_number', $request->accountNumber);
-
+            $wallet = wallet::where('account_email', "{$email}")->first();
+            $wallet2 = wallet::where('account_number', "{$request->accountNumber}")->first();
+            $verifyBank =  $this->verifyBank($request);
 
             $url = 'https://api.sandbox.sudo.cards/accounts/transfer';
 
@@ -899,15 +922,15 @@ class UserController extends Controller
             $responseData3 = $response3->json(); // Return the JSON response from the API
 
             $transaction = transaction::create([
-
-                'user_id' => $session['user_id'],
-                'wallet_id' => $wallet['wallet_id'],
-                'transaction_id' => $wallet['transaction_id'],
-                'reference' => $request->reference,
+                'touser_id' => $wallet2['user_id'],
                 'toBank_code' => $request->bankIdOrBankCode,
                 'toBank_name' => $request->bank_name,
                 'toAccount_number' => $request->accountNumber,
                 'toAccount_name' => $request->account_name,
+                'user_id' => $session['user_id'],
+                'wallet_id' => $wallet['wallet_id'],
+                'transaction_id' => $wallet['transaction_id'],
+                'reference' => $request->reference,
                 'account_number' => $wallet['account_number'],
                 'account_name' => $wallet['account_name'],
                 'bank_code' => $wallet['bank_code'],
@@ -977,14 +1000,20 @@ class UserController extends Controller
                 'data2' => $responseData2,
                 'data3' => $responseData3,
                 'data4' => $responseData4,
+                'data5' => $$verifyBank,
             ], 500);
-        // } catch (\Throwable $e) {
-        //     return response()->json([
-        //         'status' => false,
-        //         'message' => $e->getMessage()
-        //     ], 500);
-        // }
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $e->getMessage()
+                ], 500);
+            }
+        // Authentication failed...
+        // return response()->json([
+        //     'message' => 'Invalid credentials'
+        // ], 401);
     }
+    
 
     public function sendMoneyWithTag(Request $request)
     {
@@ -994,16 +1023,21 @@ class UserController extends Controller
             $request->validate([
                 'reference' => 'required|string',
                 'bank_code' => 'required|string',
+                'accountNumber' => 'string',
                 'amount' => 'required|string',
                 'urbanPayTag' => 'nullable|string',
                 'narration' => 'required|string',
             ]);
-            try {
 
-                // get acount details
-                $wallets = DB::table('wallets')
-                    ->where('urbanPayTag', '=', $request->urbanPayTag)
-                    ->get();
+            // get acount details
+            $wallets = DB::table('wallets')
+                ->where('urbanPayTag', '=', $request->urbanPayTag)
+                ->get();
+
+                // $request->accountNumber = $wallets['account_number'];
+            if ($this->verifyBank($request)) {
+
+
 
                 // get accountid from session
                 $session = Auth::user();
@@ -1024,9 +1058,9 @@ class UserController extends Controller
 
                 $body = [
                     'debitAccountId' => $wallet['wallet_id'],
-                    'creditAccountId' => $wallets['wallet_id'],
+                    'creditAccountId' => $wallet2['wallet_id'],
                     'beneficiaryBankCode' => $request->input('bank_code'),
-                    'beneficiaryAccountNumber' => $wallets['account_number'],
+                    'beneficiaryAccountNumber' => $wallet2['account_number'],
                     'amount' => $request->input('amount'),
                     'narration' => $request->input('narration'),
                     'paymentReference' => $request->input('reference'),
@@ -1043,16 +1077,16 @@ class UserController extends Controller
                 $responseData2 = $response2->json(); // Return the JSON response from the API
                 $responseData3 = $response3->json(); // Return the JSON response from the API
 
+
                 $transaction = transaction::create([
-                    'touser_id' => $session['user_id'],
-                    'toBank_code' => $request->bank_code,
-                    'toBank_name' => $request->bank_name,
-                    'toAccount_number' => $wallets['account_number'],
-                    'toAccount_name' => $request->account_name,
                     'user_id' => $session['user_id'],
                     'wallet_id' => $wallet['wallet_id'],
                     'transaction_id' => $wallet['transaction_id'],
                     'reference' => $request->reference,
+                    'toBank_code' => $request->bankIdOrBankCode,
+                    'toBank_name' => $wallet2['bank_name'],
+                    'toAccount_number' => $request->accountNumber,
+                    'toAccount_name' => $wallet2['account_name'],
                     'account_number' => $wallet['account_number'],
                     'account_name' => $wallet['account_name'],
                     'bank_code' => $wallet['bank_code'],
@@ -1067,10 +1101,10 @@ class UserController extends Controller
                     'wallet_id' => $wallet2['wallet_id'],
                     'transaction_id' => $wallet2['transaction_id'],
                     'reference' => $request->reference,
-                    'bank_code' => $request->bank_code,
-                    'bank_name' => $request->bank_name,
-                    'account_number' => $wallets['account_number'],
-                    'account_name' => $request->account_name,
+                    'bank_code' => $request->bankIdOrBankCode,
+                    'bank_name' => $wallet2['bank_name'],
+                    'account_number' => $request->accountNumber,
+                    'account_name' => $wallet2['account_name'],
                     'urbanPayTag' => $wallet2['urbanPayTag'],
                 ]);
 
@@ -1123,12 +1157,12 @@ class UserController extends Controller
                     'data3' => $responseData3,
                     'data4' => $responseData4,
                 ], 500);
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'status' => false,
-                    'message' => $e->getMessage()
-                ], 500);
             }
+
+            // Authentication failed...
+            return response()->json([
+                'message' => 'Invalid credentials'
+            ], 401);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => false,
@@ -1145,8 +1179,8 @@ class UserController extends Controller
             $session = Auth::user();
 
             $email = $session['email'];
+            $wallet = wallet::where('account_email', "{$email}")->first();
 
-            $wallet = wallet::where('account_email', $email);
 
             return response()->json([
                 'data' => $wallet
@@ -1417,7 +1451,7 @@ class UserController extends Controller
         $user_id = $session['user_id'];
         $client = new Client();
 
-        $response = $client->request('GET', 'https://api.sandbox.sudo.cards/cards/customer/'.  $user_id.'?page=0&limit=100', [
+        $response = $client->request('GET', 'https://api.sandbox.sudo.cards/cards/customer/' .  $user_id . '?page=0&limit=100', [
             'headers' => [
                 'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI',
                 'Accept' => 'application/json',

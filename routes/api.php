@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'createUser']);
-Route::post('/logout', [UserController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [UserController::class, 'logout']);
     Route::post('/refresh', [UserController::class, 'refresh']);
     Route::get('/me', [UserController::class, 'me']);
     Route::post('/verifyOtp', [UserController::class, 'verifyOtp']);
