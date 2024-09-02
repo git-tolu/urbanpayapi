@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 
 use App\Models\User;
+use App\Models\card;
 use App\Models\deleteduser;
 use App\Models\otp;
 use App\Models\wallet;
@@ -187,6 +188,7 @@ class UserController extends Controller
                     $wallet = wallet::create([
                         'user_id' => $responseData['data']['_id'],
                         'wallet_id' => $responseData1['data']['_id'],
+                        'card_id' => 'card',
                         'transaction_id' => rand(),
                         'acct_id' => $responseData1['data']['_id'],
                         'account_name' => $responseData1['data']['accountName'],
@@ -341,7 +343,7 @@ class UserController extends Controller
 
             $email = $session['email'];
 
-            $wallet = wallet::where('account_email', $email);
+            $wallet = wallet::where('account_email', '' . $email . '');
 
 
             if ($email) {
@@ -350,7 +352,7 @@ class UserController extends Controller
                     'pin' => 'required|string',
                 ]);
 
-                $user = User::where('email', $email)->first();
+                $user = User::where('email', '' . $email . '')->first();
 
                 if (!$user || !password_verify($credentials['pin'], $user->pin)) {
                     return response()->json(['message' => 'Invalid email or PIN'], 401);
@@ -392,7 +394,7 @@ class UserController extends Controller
 
         $email = $session['email'];
 
-        $wallet = wallet::where('account_email', $email);
+        $wallet = wallet::where('account_email', '' . $email . '');
 
 
         $user = User::where('email', $email)->first();
@@ -647,7 +649,7 @@ class UserController extends Controller
 
         if (strlen($request->pin) == 5) {
 
-            $user = User::where('email', $email)->first();
+            $user = User::where('email', "{$email}")->first();
             $otp = new otp;
 
             if (!$user) {
@@ -660,7 +662,7 @@ class UserController extends Controller
             // Store OTP in the database with the user's email
             $otp->email = $email;
             $otp->otp = $rand;
-            $otp->otp = $request->pin;
+            $otp->pin = $request->pin;
             $otp->save();
 
             // Send email to user containing the OTP
@@ -686,7 +688,7 @@ class UserController extends Controller
         ]);
 
 
-        $user = User::where('email', $email)->first();
+        $user = User::where('email', "{$email}")->first();
         $otp = new otp;
 
         if (!$user) {
@@ -714,7 +716,7 @@ class UserController extends Controller
         $session = Auth::user();
         $email = $session['email'];
 
-        $otp = otp::where('otp', $request->otp)->first();
+        $otp = otp::where('otp', "{$request->otp}")->first();
         $pin =  $otp->pin;
         $request->validate([
             'otp' => 'required',
@@ -729,9 +731,10 @@ class UserController extends Controller
             // Perform necessary actions (e.g., mark email as verified)
             $otp->verify = 'yes';
             $otp->save();
+
             // inserting notifcation
-            $title = "Profile Updated Successfully!";
-            $msg = 'Profile Updated Successfully!';
+            $title = "Pin Updated Successfully!";
+            $msg = 'Pin Updated Successfully!';
             $notification = notifications::create([
                 'user_id' => $session['user_id'],
                 'title' => $title,
@@ -739,19 +742,9 @@ class UserController extends Controller
             ]);
             // Send notfication email to user containing the OTP
             Mail::to($email)->send(new notificationMail($title, $msg));
-            // inserting notifcation
-            $title = "Pin Updated Successfully!";
-            $msg = 'Pin Updated Successfully!';
-            $notification = notifications::create([
-                'user_id' => $request->session()->get('user_id'),
-                'title' => $title,
-                'message' => $msg
-            ]);
-            // Send notfication email to user containing the OTP
-            Mail::to($email)->send(new notificationMail($title, $msg));
 
-            if (User::where('email', $email)->exists()) {
-                User::where('email', $email)->update([
+            if (User::where('email', "{$email}")->exists()) {
+                User::where('email', "{$email}")->update([
                     'pin' => Hash::make($pin),
                 ]);
                 // $user = User::find($email);
@@ -774,14 +767,14 @@ class UserController extends Controller
 
     public function updateUserProfilePassword(Request $request)
     {
-        $session = Auth::user();
-        $email = $session['email'];
-
-        $otp = otp::where('otp',  $request->otp)->first();
-        $password = $otp->pin;
         $request->validate([
             'otp' => 'required',
         ]);
+        $session = Auth::user();
+        $email = $session['email'];
+
+        $otp = otp::where('otp',  "{$request->otp}")->first();
+        $password = $otp->pin;
 
         // if (!$otp) {
         //     return response()->json(['message' => 'User not found'], 404);
@@ -792,13 +785,23 @@ class UserController extends Controller
             // Perform necessary actions (e.g., mark email as verified)
             $otp->verify = 'yes';
             $otp->save();
-            if (User::where('email', $email)->exists()) {
-                User::where('email', $email)->update([
+            if (User::where('email', "{$email}")->exists()) {
+                User::where('email', "{$email}")->update([
                     'password' => Hash::make($password),
                 ]);
                 // $user = User::find($email);
                 // $user->password = is_null($password) ? $user->password :  Hash::make($password);
                 // $user->save();
+                // inserting notifcation
+                $title = "Password Updated Successfully!";
+                $msg = 'Password Updated Successfully!';
+                $notification = notifications::create([
+                    'user_id' => $session['user_id'],
+                    'title' => $title,
+                    'message' => $msg
+                ]);
+                // Send notfication email to user containing the OTP
+                Mail::to($email)->send(new notificationMail($title, $msg));
                 return response()->json([
                     "message" => "Password Updated"
                 ], 200);
@@ -876,45 +879,51 @@ class UserController extends Controller
     public function sendMoney(Request $request)
     {
         try {
-        $validatedData = $request->validate([
-            'bankIdOrBankCode' => 'required|string',
-            'accountNumber' => 'required|string',
-            'reference' => 'string',
-            'bank_name' => 'required|string',
-            'account_name' => 'required|string',
-            'amount' => 'required|string',
-            'narration' => 'required|string',
-        ]);
+            $validatedData = $request->validate([
+                'bankIdOrBankCode' => 'required|string',
+                'accountNumber' => 'required|string',
+                'reference' => 'string',
+                'bank_name' => 'required|string',
+                'account_name' => 'required|string',
+                'amount' => 'required|string',
+                'narration' => 'required|string',
+            ]);
             # code...
             // get accountid from session
             $session = Auth::user();
 
             $email = $session['email'];
+
             $wallet = wallet::where('account_email', "{$email}")->first();
             $wallet2 = wallet::where('account_number', "{$request->accountNumber}")->first();
-            $verifyBank =  $this->verifyBank($request);
+            // $verifyBank =  $this->verifyBank($request);
+            $wa_d = $wallet['wallet_id'];
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI',
+                'accept' => 'application/json',
+                'content-type' => 'application/json',
+            ])->post('https://api.sandbox.sudo.cards/accounts/transfer', [
+                // 'debitAccountId' => "{$wa_d}",
+                // 'beneficiaryBankCode' =>  "{$request->bankIdOrBankCode}",
+                // 'beneficiaryAccountNumber' =>  "{$request->accountNumber}",
+                // 'amount' =>  "{$request->amount}",
+                // 'narration' =>  "{$request->narration}",
+                // 'paymentReference' =>  "{$request->reference}",
+                'debitAccountId' => '66c217195489e395642255aa',
+                'beneficiaryBankCode' => '999240',
+                'beneficiaryAccountNumber' => '8027002308',
+                'amount' => 100,
+                'narration' => 'string',
+                'paymentReference' => 'string',
+            ]);
+            $responseData = $response->json(); // Return the JSON response from the API
 
-            $url = 'https://api.sandbox.sudo.cards/accounts/transfer';
 
             $headers = [
                 'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
                 'accept' => 'application/json',
                 'content-type' => 'application/json',
             ];
-
-            $body = [
-                'debitAccountId' => $wallet['wallet_id'],
-                'creditAccountId' => $request->creditAccountId,
-                'beneficiaryBankCode' => $request->bankIdOrBankCode,
-                'beneficiaryAccountNumber' => $request->accountNumber,
-                'amount' => $request->amount,
-                'narration' => $request->narration,
-                'paymentReference' => $request->reference,
-            ];
-
-            $response = Http::withHeaders($headers)->post($url, $body);
-
-            $responseData = $response->json(); // Return the JSON response from the API
 
             $response2 = Http::withHeaders($headers)->get('https://api.sandbox.sudo.cards/accounts/' . $wallet['wallet_id'] . '/transactions?page=0&limit=100');
             $response3 = Http::withHeaders($headers)->get('https://api.sandbox.sudo.cards/accounts/' . $wallet2['wallet_id'] . '/transactions?page=0&limit=100');
@@ -994,26 +1003,32 @@ class UserController extends Controller
 
             // Send notfication email to user 
             Mail::to($wallet2['account_email'])->send(new notificationMail($title, $msg));
+            // update balance 
+            $wallet->balance = $responseData1['data']['currentBalance'];
+            $wallet->save();
+
+            $wallet2->balance = $responseData4['data']['currentBalance'];
+            $wallet2->save();
             return response()->json([
                 'data' => $responseData,
                 'data1' => $responseData1,
                 'data2' => $responseData2,
                 'data3' => $responseData3,
                 'data4' => $responseData4,
-                'data5' => $$verifyBank,
+                // 'data5' => $$verifyBank,
             ], 500);
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'status' => false,
-                    'message' => $e->getMessage()
-                ], 500);
-            }
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
         // Authentication failed...
         // return response()->json([
         //     'message' => 'Invalid credentials'
         // ], 401);
     }
-    
+
 
     public function sendMoneyWithTag(Request $request)
     {
@@ -1034,7 +1049,7 @@ class UserController extends Controller
                 ->where('urbanPayTag', '=', $request->urbanPayTag)
                 ->get();
 
-                // $request->accountNumber = $wallets['account_number'];
+            // $request->accountNumber = $wallets['account_number'];
             if ($this->verifyBank($request)) {
 
 
@@ -1260,77 +1275,114 @@ class UserController extends Controller
             ], 500);
         }
     }
+    public function depositByCard(Request $request)
+    {
+        // Validate the request data
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:100',
+            'card_number' => 'required|string',
+            'cvv' => 'required|string',
+            'expiry_month' => 'required|string',
+            'expiry_year' => 'required|string',
+            'card_type' => 'required|string|in:VISA,MASTERCARD,VERVE', // Example card types
+        ]);
+
+        $amount = $validated['amount'] * 100; // Convert to kobo (Naira to kobo conversion)
+
+        try {
+            $client = new Client();
+
+            // Make the request to Interswitch's payment API
+            $response = $client->post('https://sandbox.interswitchng.com/api/v1/transactions', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getInterswitchToken(),
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'amount' => $amount,
+                    'currency' => 'NGN',
+                    'customerId' => $request->user()->id,
+                    'paymentParams' => [
+                        'cardNumber' => $validated['card_number'],
+                        'cvv' => $validated['cvv'],
+                        'expiryMonth' => $validated['expiry_month'],
+                        'expiryYear' => $validated['expiry_year'],
+                        'cardType' => $validated['card_type'], // Include card type
+                    ],
+                ],
+            ]);
+
+            $result = json_decode($response->getBody(), true);
+
+            if ($result['status'] === 'SUCCESS') {
+                // Handle successful transaction
+                // Example: update wallet balance, record transaction
+                return response()->json(['message' => 'Deposit successful'], 200);
+            } else {
+                // Handle transaction failure
+                return response()->json(['message' => 'Deposit failed', 'details' => $result['error']], 400);
+            }
+        } catch (\Exception $e) {
+            // Handle exceptions such as network errors or API errors
+            return response()->json(['message' => 'An error occurred', 'details' => $e->getMessage()], 500);
+        }
+    }
+
+    // Method to get the Interswitch access token
+    private function getInterswitchToken()
+    {
+        $client = new Client();
+
+        $response = $client->post('https://sandbox.interswitchng.com/api/v1/authenticate', [
+            'headers' => [
+                'Authorization' => 'Basic ' . base64_encode(config('services.interswitch.client_id') . ':' . config('services.interswitch.client_secret')),
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
+        ]);
+
+        $result = json_decode($response->getBody(), true);
+
+        return $result['access_token'];
+    }
     public function createCard(Request $request)
     {
         try {
             $validatedData = $request->validate([
-                'brand' => 'string',
-                'type' => 'string|required',
-                'number' => 'string',
-                'currency' => 'string|required',
-                'issuerCountry' => 'string',
-                'metadata' => 'string',
-                'allowedCategories' => 'string',
-                'blockedCategories' => 'string',
-                'spendinglimitamount' => 'string',
-                'spendinglimitinterval' => 'string',
-                'bankCode' => 'string',
-                'accountNumber' => 'string',
-                'replacementFor' => 'string',
-                'replacementReason' => 'string',
-                'debitAccountId' => 'string',
+                'customerId' => 'string|required',
+                'debitAccountId' => 'string|required',
                 'amount' => 'string',
-                'sendPINSMS' => 'string',
-                'expirationDate' => 'string',
+                'brand' => 'string|required',
+                'type' => 'string',
+                'currency' => 'string',
+                'status' => 'string',
 
             ]);
             $url = 'https://api.sandbox.sudo.cards/cards';
-            $email = $request->session()->get('email');
-            $name = $request->session()->get('name');
-            $username = $request->session()->get('username');
+            // get accountid from session
+            $session = Auth::user();
+
+            $email = $session['email'];
+
+            $wallet = wallet::where('account_email', "{$email}")->first();
+            $name = $session['name'];
+            $username = $session['username'];
 
             // saving wallet details to session
             // $wallet = wallet::where('email', $user->email)->first();
-            $balance = $request->session()->get('balance');
-            $user_id = $request->session()->get('user_id');
-            $wallet_id = $request->session()->get('wallet_id');
-            $transaction_id = $request->session()->get('transaction_id');
+            $balance = $wallet['balance'];
+            $user_id = $wallet['user_id'];
+            $wallet_id = $wallet['wallet_id'];
+            $transaction_id = $wallet['transaction_id'];
 
 
             $body = [
-                "customerId" => "{$user_id}",
-                "fundingSourceId" => "string",
-                "type" => "physical",
+                "customerId" => "66c2192e5489e39564225694",
+                "debitAccountId" => "66c219305489e395642256a6",
+                "amount" => "1000",
                 "brand" => "Verve",
-                "number" => "string",
+                "type" => "virtual",
                 "currency" => "NGN",
-                "issuerCountry" => "NGA",
                 "status" => "active",
-                "metadata" => "string",
-                "spendingControls" => [
-                    "allowedCategories" => ["string"],
-                    "blockedCategories" => ["string"],
-                    "channels" => [
-                        "atm" => true,
-                        "pos" => true,
-                        "web" => true,
-                        "mobile" => true,
-                    ],
-                    "spendingLimits" => [
-                        [
-                            "amount" => 0,
-                            "interval" => "daily"
-                        ]
-                    ]
-                ],
-                "bankCode" => "string",
-                "accountNumber" => "string",
-                "replacementFor" => "string",
-                "replacementReason" => "lost",
-                "debitAccountId" => "string",
-                "amount" => 0,
-                "sendPINSMS" => false,
-                "expirationDate" => "string"
             ];
 
             $response = Http::withHeaders([
@@ -1339,8 +1391,29 @@ class UserController extends Controller
                 'content-type' => 'application/json',
             ])->post($url, $body);
             $responseData = $response->json(); // Return JSON response from the API
+            $wallet->card_id = $responseData['_id'];
+            $wallet->save();
 
-            $request->session()->put('card_id', $responseData['name']);
+            $card = card::create([
+                'card_id' => $responseData['_id'],
+                'user_id' => $responseData['user_id'],
+                'wallet_id' => $responseData['wallet_id'],
+                'fundingSource' => $responseData['fundingSource'],
+                'type' => $responseData['type'],
+                'currency' => $responseData['currency'],
+                'maskedPan' => $responseData['maskedPan'],
+                'expiryMonth' => $responseData['expiryMonth'],
+                'expiryYear' => $responseData['expiryYear'],
+                'status' => $responseData['status'],
+                'is2FAEnrolled' => $responseData['is2FAEnrolled'],
+                'isDefaultPINChanged' => $responseData['isDefaultPINChanged'],
+                'disposable' => $responseData['disposable'],
+                'refundAccount' => $responseData['refundAccount'],
+                'isDeleted' => $responseData['isDeleted'],
+                'createdAt' => $responseData['createdAt'],
+                'updatedAt' => $responseData['updatedAt'],
+            ]);
+            // $request->session()->put('card_id', $responseData['name']);
 
             return $response->json(); // Return the JSON response from the API
         } catch (\Throwable $th) {
@@ -1392,9 +1465,9 @@ class UserController extends Controller
     public function cardGetSingleTransactions(Request $request)
     {
         try {
-            $validatedData = $request->validate([
-                'transactionId' => 'required|string',
-            ]);
+            // $validatedData = $request->validate([
+            //     'transactionId' => 'required|string',
+            // ]);
             // $acct_id = $request->session()->get('card_id');
             // $validatedData['transactionId'] = $acct_id;
 

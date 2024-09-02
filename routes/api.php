@@ -21,11 +21,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/singleUser', [UserController::class, 'singleUser']);
     Route::post('/singleUser2', [UserController::class, 'singleUser2']);
     Route::post('/listUser', [UserController::class, 'listUser']);
-    Route::put('/updateUserProfile', [UserController::class, 'updateUserProfile']);
+    Route::post('/updateUserProfile', [UserController::class, 'updateUserProfile']);
     Route::post('/updateUserProfilePinVerify', [UserController::class, 'updateUserProfilePinVerify']);
     Route::post('/updateUserProfilePasswordVerify', [UserController::class, 'updateUserProfilePasswordVerify']);
-    Route::put('/updateUserProfilePin', [UserController::class, 'updateUserProfilePin']);
-    Route::put('/updateUserProfilePassword', [UserController::class, 'updateUserProfilePassword']);
+    Route::post('/updateUserProfilePin', [UserController::class, 'updateUserProfilePin']);
+    Route::post('/updateUserProfilePassword', [UserController::class, 'updateUserProfilePassword']);
     Route::post('/getbankList', [UserController::class, 'getbankList']);
     Route::post('/verifyBank', [UserController::class, 'verifyBank']);
     Route::post('/sendMoney', [UserController::class, 'sendMoney']);
@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/transactionGet', [UserController::class, 'transactionGet']);
     Route::post('/transactionGetALL', [UserController::class, 'transactionGetALL']);
     Route::post('/createCard', [UserController::class, 'createCard']);
+    Route::post('/depositByCard', [UserController::class, 'depositByCard']);
     Route::post('/cardGetTransactions', [UserController::class, 'cardGetTransactions']);
     Route::post('/cardGetSingleTransactions', [UserController::class, 'cardGetSingleTransactions']);
     Route::post('/getCardById', [UserController::class, 'getCardById']);

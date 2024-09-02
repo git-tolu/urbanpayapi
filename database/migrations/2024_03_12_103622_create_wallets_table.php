@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
             $table->string('user_id');
+            $table->string('card_id')->nullable();
             $table->string('wallet_id');
             $table->string('transaction_id');
             $table->string('account_name');
