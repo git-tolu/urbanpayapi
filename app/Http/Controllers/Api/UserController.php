@@ -1348,8 +1348,6 @@ class UserController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'customerId' => 'string|required',
-                'debitAccountId' => 'string|required',
                 'amount' => 'string',
                 'brand' => 'string|required',
                 'type' => 'string',
@@ -1373,9 +1371,20 @@ class UserController extends Controller
             $user_id = $wallet['user_id'];
             $wallet_id = $wallet['wallet_id'];
             $transaction_id = $wallet['transaction_id'];
+            $amount = $validatedData['amount'];
+            $brand = $validatedData['brand'];
+            $type = $validatedData['type'];
+            $currency = $validatedData['currency'];
 
 
             $body = [
+                // "customerId" => "{$user_id}",
+                // "debitAccountId" => "{$wallet_id}",
+                // "amount" => "1000",
+                // "brand" => "Verve",
+                // "type" => "virtual",
+                // "currency" => "NGN",
+                // "status" => "active",
                 "customerId" => "66c2192e5489e39564225694",
                 "debitAccountId" => "66c219305489e395642256a6",
                 "amount" => "1000",
