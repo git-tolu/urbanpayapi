@@ -40,6 +40,13 @@ return [
         'merchant_code' => env('INTERSWITCH_MERCHANT_CODE'),
         'environment' => env('INTERSWITCH_ENVIRONMENT'),
     ],
+    'remita' => [
+        'merchant_id' => env('REMITA_MERCHANT_ID'),
+        'api_key' => env('REMITA_API_KEY'),
+        'api_token' => env('REMITA_API_TOKEN'),
+        'environment' => env('REMITA_ENVIRONMENT'),
+    ],
+    
     
 
 ];
