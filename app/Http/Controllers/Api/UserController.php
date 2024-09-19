@@ -1277,72 +1277,128 @@ class UserController extends Controller
     }
     public function depositByCard(Request $request)
     {
-        // Validate the request data
         $validated = $request->validate([
             'amount' => 'required|numeric|min:100',
             'card_number' => 'required|string',
             'cvv' => 'required|string',
             'expiry_month' => 'required|string',
             'expiry_year' => 'required|string',
-            'card_type' => 'required|string|in:VISA,MASTERCARD,VERVE', // Example card types
+            'email' => 'required|email',
+            'bank_code' => 'required|string',  // Destination bank code
+            'account_number' => 'required|string',  // Destination bank account number
         ]);
 
-        $amount = $validated['amount'] * 100; // Convert to kobo (Naira to kobo conversion)
+        $amountInKobo = $validated['amount'] * 100; // Convert to kobo
 
-        try {
-            $client = new Client();
-
-            // Make the request to Interswitch's payment API
-            $response = $client->post('https://sandbox.interswitchng.com/api/v1/transactions', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->getInterswitchToken(),
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'amount' => $amount,
-                    'currency' => 'NGN',
-                    'customerId' => $request->user()->id,
-                    'paymentParams' => [
-                        'cardNumber' => $validated['card_number'],
-                        'cvv' => $validated['cvv'],
-                        'expiryMonth' => $validated['expiry_month'],
-                        'expiryYear' => $validated['expiry_year'],
-                        'cardType' => $validated['card_type'], // Include card type
-                    ],
-                ],
-            ]);
-
-            $result = json_decode($response->getBody(), true);
-
-            if ($result['status'] === 'SUCCESS') {
-                // Handle successful transaction
-                // Example: update wallet balance, record transaction
-                return response()->json(['message' => 'Deposit successful'], 200);
-            } else {
-                // Handle transaction failure
-                return response()->json(['message' => 'Deposit failed', 'details' => $result['error']], 400);
-            }
-        } catch (\Exception $e) {
-            // Handle exceptions such as network errors or API errors
-            return response()->json(['message' => 'An error occurred', 'details' => $e->getMessage()], 500);
-        }
-    }
-
-    // Method to get the Interswitch access token
-    private function getInterswitchToken()
-    {
         $client = new Client();
 
-        $response = $client->post('https://sandbox.interswitchng.com/api/v1/authenticate', [
+        // 1. Process Card Deposit via Remita
+        $response = $client->post($this->getRemitaBaseUrl() . '/card/initialize', [
             'headers' => [
-                'Authorization' => 'Basic ' . base64_encode(config('services.interswitch.client_id') . ':' . config('services.interswitch.client_secret')),
-                'Content-Type' => 'application/x-www-form-urlencoded',
+                'Authorization' => 'Bearer ' . $this->getRemitaToken(),
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'merchantId' => config('services.remita.merchant_id'),
+                'serviceTypeId' => 'YourServiceTypeID', // Obtain from Remita
+                'orderId' => uniqid(),
+                'amount' => $amountInKobo,
+                'payerEmail' => $validated['email'],
+                'payerPhone' => $request->user()->phone_number,
+                'description' => 'Deposit into wallet',
+                'paymentParams' => [
+                    'cardNumber' => $validated['card_number'],
+                    'cvv' => $validated['cvv'],
+                    'expiryMonth' => $validated['expiry_month'],
+                    'expiryYear' => $validated['expiry_year'],
+                ],
             ],
         ]);
 
         $result = json_decode($response->getBody(), true);
 
-        return $result['access_token'];
+        if ($result['statuscode'] === '00') {
+            // 2. Handle Successful Card Deposit
+            $transactionRef = $result['transaction_ref'];
+
+            // 3. Now Transfer from Remita Account to Another Bank
+            $transferResponse = $this->transferToBankAccount($validated['amount'], $validated['bank_code'], $validated['account_number']);
+
+            if ($transferResponse['status'] === 'SUCCESS') {
+                // Successful transfer
+                return response()->json([
+                    'message' => 'Deposit and transfer successful',
+                    'transaction_ref' => $transactionRef,
+                    'transfer_ref' => $transferResponse['transaction_ref']
+                ], 200);
+            } else {
+                // Handle transfer failure
+                return response()->json([
+                    'message' => 'Deposit successful, but transfer failed',
+                    'details' => $transferResponse['error']
+                ], 500);
+            }
+        } else {
+            // Handle card deposit failure
+            return response()->json([
+                'message' => 'Deposit failed',
+                'details' => $result['status']
+            ], 400);
+        }
+    }
+
+    // New Method to Transfer Funds from Remita Account to a Bank Account
+    private function transferToBankAccount($amount, $bankCode, $accountNumber)
+    {
+        $amountInKobo = $amount * 100; // Convert to kobo
+
+        $client = new Client();
+        // https://demo.remita.net/remita/exapp/api/v1/send/api/rpgsvc/v3/rpg/single/payment
+        $response = $client->post($this->getRemitaBaseUrl() . '/send/api/rpgsvc/v3/rpg/single/payment', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->getRemitaToken(),
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'merchantId' => config('services.remita.merchant_id'),
+                'serviceTypeId' => 'YourServiceTypeID', // Obtain from Remita
+                'orderId' => uniqid(),
+                'amount' => $amountInKobo,
+                'destinationBankCode' => $bankCode,
+                'destinationAccountNumber' => $accountNumber,
+                'payerName' => 'Your Payer Name',  // Can be dynamic
+                'payerEmail' => 'payer@example.com',  // Can be dynamic
+                'payerPhone' => '08012345678',  // Can be dynamic
+                'description' => 'Fund Transfer after card deposit',
+            ],
+        ]);
+
+        return json_decode($response->getBody(), true);
+    }
+    public function handleWebhook(Request $request)
+    {
+        // Verify webhook signature (if applicable)
+        $data = $request->all();
+
+        if ($data['status'] === 'SUCCESS') {
+            // Update user wallet balance and transaction status
+        }
+    }
+
+    // Method to get the remita access token
+    private function getRemitaBaseUrl()
+    {
+        return config('services.remita.environment') === 'sandbox'
+            ? 'https://demo.remita.net/remita/exapp/api/v1'
+            // ? 'https://remitademo.net/remita/exapp/api/v1'
+            : 'https://login.remita.net/remita/exapp/api/v1';
+    }
+
+    private function getRemitaToken()
+    {
+        // Assuming you're caching tokens, retrieve or request a new one
+        // You can implement a token request if necessary here
+        return config('services.remita.api_token');
     }
     public function createCard(Request $request)
     {
