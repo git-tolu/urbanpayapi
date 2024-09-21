@@ -1275,12 +1275,13 @@ class UserController extends Controller
             ], 500);
         }
     }
-    public function depositByCard(Request $request)
+
+    public function depositViaCard(Request $request)
     {
         try {
-
             $validated = $request->validate([
                 'amount' => 'required|numeric|min:100',
+                'phone_number' => 'required|numeric|min:10',
                 'card_number' => 'required|string',
                 'cvv' => 'required|string',
                 'expiry_month' => 'required|string',
@@ -1290,61 +1291,60 @@ class UserController extends Controller
                 'account_number' => 'required|string',  // Destination bank account number
             ]);
 
-            $amountInKobo = $validated['amount'] * 100; // Convert to kobo
-
             $client = new Client();
 
-            // 1. Process Card Deposit via Remita
-            $response = $client->post($this->getRemitaBaseUrl() . '/card/initialize', [
+            // 1. Initialize Payment using Flutterwave
+            $paymentResponse = $client->post($this->getFlutterwaveBaseUrl() . '/payments', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $this->getRemitaToken(),
+                    'Authorization' => 'Bearer ' . env('FLW_SECRET_KEY'),
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
-                    'merchantId' => config('services.remita.merchant_id'),
-                    'serviceTypeId' => '4430731', // Obtain from Remita
-                    'orderId' => uniqid(),
-                    'amount' => $amountInKobo,
-                    'payerEmail' => $validated['email'],
-                    'payerPhone' => 09130388749,
-                    'description' => 'Deposit into wallet',
-                    'paymentParams' => [
-                        'cardNumber' => $validated['card_number'],
+                    'tx_ref' => uniqid(),
+                    'amount' => $validated['amount'],
+                    'currency' => 'NGN',
+                    'payment_type' => 'card',
+                    'redirect_url' => 'http://your-redirect-url.com',
+                    'customer' => [
+                        'email' => $validated['email'],
+                        'phone_number' => $request->user()->phone_number,
+                    ],
+                    'card' => [
+                        'number' => $validated['card_number'],
                         'cvv' => $validated['cvv'],
-                        'expiryMonth' => $validated['expiry_month'],
-                        'expiryYear' => $validated['expiry_year'],
+                        'expiry_month' => $validated['expiry_month'],
+                        'expiry_year' => $validated['expiry_year'],
                     ],
                 ],
             ]);
 
-            $result = json_decode($response->getBody(), true);
+            $paymentResult = json_decode($paymentResponse->getBody(), true);
 
-            if ($result['statuscode'] === '00') {
-                // 2. Handle Successful Card Deposit
-                $transactionRef = $result['transaction_ref'];
+            if ($paymentResult['status'] === 'success') {
+                // 2. Payment Successful, Transfer to Bank
+                $transferResponse = $this->transferToBankAccount(
+                    $validated['amount'],
+                    $validated['bank_code'],
+                    $validated['account_number']
+                );
 
-                // 3. Now Transfer from Remita Account to Another Bank
-                $transferResponse = $this->transferToBankAccount($validated['amount'], $validated['bank_code'], $validated['account_number']);
-
-                if ($transferResponse['status'] === 'SUCCESS') {
-                    // Successful transfer
+                if ($transferResponse['status'] === 'success') {
                     return response()->json([
                         'message' => 'Deposit and transfer successful',
-                        'transaction_ref' => $transactionRef,
-                        'transfer_ref' => $transferResponse['transaction_ref']
+                        'payment_reference' => $paymentResult['data']['tx_ref'],
+                        'transfer_reference' => $transferResponse['data']['reference']
                     ], 200);
                 } else {
-                    // Handle transfer failure
                     return response()->json([
                         'message' => 'Deposit successful, but transfer failed',
-                        'details' => $transferResponse['error']
+                        'details' => $transferResponse['message']
                     ], 500);
                 }
             } else {
                 // Handle card deposit failure
                 return response()->json([
                     'message' => 'Deposit failed',
-                    'details' => $result['status']
+                    'details' => $paymentResult['message']
                 ], 400);
             }
         } catch (\Throwable $e) {
@@ -1355,100 +1355,47 @@ class UserController extends Controller
         }
     }
 
-    // New Method to Transfer Funds from Remita Account to a Bank Account
+    private function getFlutterwaveBaseUrl()
+    {
+        return env('FLW_ENVIRONMENT') === 'sandbox'
+            ? 'https://api.flutterwave.com/v3'
+            : 'https://api.flutterwave.com/v3';
+    }
+
+    // Function to handle transfer of funds to a bank account using Flutterwave Payout API
     private function transferToBankAccount($amount, $bankCode, $accountNumber)
     {
-     
-        $amountInKobo = $amount * 100; // Convert to kobo
-     
+        try {
+            $client = new Client();
 
-        $client = new Client();
-        // https://demo.remita.net/remita/exapp/api/v1/send/api/rpgsvc/v3/rpg/single/payment
-        $response = $client->post($this->getRemitaBaseUrl() . '/send/api/rpgsvc/v3/rpg/single/payment', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getRemitaToken(),
-                'Content-Type' => 'application/json',
-            ],
-            'json' => [
-                'merchantId' => config('services.remita.merchant_id'),
-                'serviceTypeId' => '4430731', // Obtain from Remita
-                'orderId' => uniqid(),
-                'amount' => $amountInKobo,
-                'destinationBankCode' => $bankCode,
-                'destinationAccountNumber' => $accountNumber,
-                'payerName' => 'URBAN UNIVERSE LIMITED',  // Can be dynamic
-                'payerEmail' => 'adejumobitoluwanimi2@gmail.com',  // Can be dynamic
-                'payerPhone' => '09130388749',  // Can be dynamic
-                // 'payerEmail' => 'stanleyeberendu01@gmail.com',  // Can be dynamic
-                // 'payerPhone' => '08163729997',  // Can be dynamic
-                'description' => 'Fund Transfer after card deposit',
-            ],
-        ]);
+            $transferResponse = $client->post($this->getFlutterwaveBaseUrl() . '/transfers', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . env('FLW_SECRET_KEY'),
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'account_bank' => $bankCode,
+                    'account_number' => $accountNumber,
+                    'amount' => $amount,
+                    'currency' => 'NGN',
+                    'reference' => uniqid(),
+                    'narration' => 'Transfer after card deposit',
+                    'debit_currency' => 'NGN',
+                ],
+            ]);
 
-        return json_decode($response->getBody(), true);
-    }
-    public function transferToBankAccount1(Request $request)
-    {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:100',
-            'bank_code' => 'required|string',  // Destination bank code
-            'account_number' => 'required|string',  // Destination bank account number
-        ]);
-        // $amountInKobo = $amount * 100; // Convert to kobo
-        $amountInKobo = $validated['amount']* 100; // Convert to kobo
-        $bankCode = $validated['bank_code']; // Convert to kobo
-        $accountNumber = $validated['account_number']; // Convert to kobo
-
-        $client = new Client();
-        // https://demo.remita.net/remita/exapp/api/v1/send/api/rpgsvc/v3/rpg/single/payment
-        $response = $client->post($this->getRemitaBaseUrl() . '/send/api/rpgsvc/v3/rpg/single/payment', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getRemitaToken(),
-                'Content-Type' => 'application/json',
-            ],
-            'json' => [
-                'merchantId' => config('services.remita.merchant_id'),
-                'serviceTypeId' => '4430731', // Obtain from Remita
-                'orderId' => uniqid(),
-                'amount' => $amountInKobo,
-                'destinationBankCode' => $bankCode,
-                'destinationAccountNumber' => $accountNumber,
-                'payerName' => 'URBAN UNIVERSE LIMITED',  // Can be dynamic
-                'payerEmail' => 'adejumobitoluwanimi2@gmail.com',  // Can be dynamic
-                'payerPhone' => '09130388749',  // Can be dynamic
-                // 'payerEmail' => 'stanleyeberendu01@gmail.com',  // Can be dynamic
-                // 'payerPhone' => '08163729997',  // Can be dynamic
-                'description' => 'Fund Transfer after card deposit',
-            ],
-        ]);
-
-        return json_decode($response->getBody(), true);
-    }
-    public function handleWebhook(Request $request)
-    {
-        // Verify webhook signature (if applicable)
-        $data = $request->all();
-
-        if ($data['status'] === 'SUCCESS') {
-            // Update user wallet balance and transaction status
+            return $transferResponse->getBody();
+            // return json_decode($transferResponse->getBody(), true);
+        } catch (\Throwable $e) {
+            # code...
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
-    // Method to get the remita access token
-    private function getRemitaBaseUrl()
-    {
-        return config('services.remita.environment') === 'sandbox'
-            // ? 'https://demo.remita.net/remita/exapp/api/v1'
-            ? 'https://remitademo.net/remita/exapp/api/v1'
-            : 'https://login.remita.net/remita/exapp/api/v1';
-    }
 
-    private function getRemitaToken()
-    {
-        // Assuming you're caching tokens, retrieve or request a new one
-        // You can implement a token request if necessary here
-        return config('services.remita.api_token');
-    }
+
     public function createCard(Request $request)
     {
         try {

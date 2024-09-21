@@ -46,6 +46,12 @@ return [
         'api_token' => env('REMITA_API_TOKEN'),
         'environment' => env('REMITA_ENVIRONMENT'),
     ],
+    'flutterwave' => [
+        'public_key' => env('FLW_PUBLIC_KEY'),
+        'secret_key' => env('FLW_SECRET_KEY'),
+        'environment' => env('FLW_ENVIRONMENT'),
+    ],
+    
     
     
 

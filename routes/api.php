@@ -34,7 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/transactionGet', [UserController::class, 'transactionGet']);
     Route::post('/transactionGetALL', [UserController::class, 'transactionGetALL']);
     Route::post('/createCard', [UserController::class, 'createCard']);
-    Route::post('/depositByCard', [UserController::class, 'depositByCard']);
+    Route::post('/depositByCard', [UserController::class, 'depositViaCard']);
     Route::post('/transferToBankAccount', [UserController::class, 'transferToBankAccount1']);
     Route::post('/wallet/remita/callback', [UserController::class, 'handleWebhook']);
     Route::post('/cardGetTransactions', [UserController::class, 'cardGetTransactions']);
