@@ -25,7 +25,8 @@ use Illuminate\Support\Facades\Http;
 use GuzzleHttp\Client;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Session;
-
+// use Flutterwave\Rave;
+// use Flutterwave\Transactions;
 
 class UserController extends Controller
 {
@@ -909,10 +910,10 @@ class UserController extends Controller
                 // 'amount' =>  "{$request->amount}",
                 // 'narration' =>  "{$request->narration}",
                 // 'paymentReference' =>  "{$request->reference}",
-                'debitAccountId' => '66c217195489e395642255aa',
+                'debitAccountId' => '66ef0d52f587cea3044dae17',
                 'beneficiaryBankCode' => '999240',
                 'beneficiaryAccountNumber' => '8027002308',
-                'amount' => 100,
+                'amount' => 1000,
                 'narration' => 'string',
                 'paymentReference' => 'string',
             ]);
@@ -1280,8 +1281,8 @@ class UserController extends Controller
     {
         try {
             $validated = $request->validate([
-                'amount' => 'required|numeric|min:100',
                 'phone_number' => 'required|numeric|min:10',
+                'amount' => 'required|numeric|min:100',
                 'card_number' => 'required|string',
                 'cvv' => 'required|string',
                 'expiry_month' => 'required|string',
@@ -1296,7 +1297,7 @@ class UserController extends Controller
             // 1. Initialize Payment using Flutterwave
             $paymentResponse = $client->post($this->getFlutterwaveBaseUrl() . '/payments', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . env('FLW_SECRET_KEY'),
+                    'Authorization' => 'Bearer ' . config('services.flutterwave.secret_key'),
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
@@ -1317,8 +1318,9 @@ class UserController extends Controller
                     ],
                 ],
             ]);
+            $paymentResult = json_decode($paymentResponse->getBody()->getContents(), true);  // Get response body and decode JSON
 
-            $paymentResult = json_decode($paymentResponse->getBody(), true);
+            // $paymentResult = json_decode($paymentResponse->getBody(), true);
 
             if ($paymentResult['status'] === 'success') {
                 // 2. Payment Successful, Transfer to Bank
@@ -1327,6 +1329,7 @@ class UserController extends Controller
                     $validated['bank_code'],
                     $validated['account_number']
                 );
+                $transferResult = json_decode($transferResponse->getBody()->getContents(), true);  // Get response body and decode JSON
 
                 if ($transferResponse['status'] === 'success') {
                     return response()->json([
@@ -1357,7 +1360,7 @@ class UserController extends Controller
 
     private function getFlutterwaveBaseUrl()
     {
-        return env('FLW_ENVIRONMENT') === 'sandbox'
+        return config('services.flutterwave.environment') === 'sandbox'
             ? 'https://api.flutterwave.com/v3'
             : 'https://api.flutterwave.com/v3';
     }
@@ -1370,7 +1373,7 @@ class UserController extends Controller
 
             $transferResponse = $client->post($this->getFlutterwaveBaseUrl() . '/transfers', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . env('FLW_SECRET_KEY'),
+                    'Authorization' => 'Bearer ' . config('services.flutterwave.secret_key'),
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
@@ -1384,7 +1387,8 @@ class UserController extends Controller
                 ],
             ]);
 
-            return $transferResponse->getBody();
+            
+        return json_decode($transferResponse->getBody()->getContents(), true);  
             // return json_decode($transferResponse->getBody(), true);
         } catch (\Throwable $e) {
             # code...
