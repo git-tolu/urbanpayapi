@@ -1318,7 +1318,7 @@ class UserController extends Controller
                     ],
                 ],
             ]);
-            $paymentResult = json_decode($paymentResponse->getBody()->getContents(), true);  // Get response body and decode JSON
+            $paymentResult = json_decode(json: $paymentResponse->getBody()->getContents(), associative: true);  // Get response body and decode JSON
 
             // $paymentResult = json_decode($paymentResponse->getBody(), true);
 
@@ -1388,7 +1388,7 @@ class UserController extends Controller
             ]);
 
             
-        return json_decode($transferResponse->getBody()->getContents(), true);  
+        return json_decode(json: $transferResponse->getBody()->getContents(), associative: true);  
             // return json_decode($transferResponse->getBody(), true);
         } catch (\Throwable $e) {
             # code...
