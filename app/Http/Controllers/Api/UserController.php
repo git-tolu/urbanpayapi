@@ -262,59 +262,68 @@ class UserController extends Controller
 
     public function login(Request $request)
     {
+        try {
+            //code...
 
-        // Validate the request data
-        $credentials = $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string',
-        ]);
-
-        // Attempt to log the user in
-        if ($token = Auth::attempt($credentials)) {
-            // Authentication passed...
-            // Store user details in session
-            /** @var \App\Models\User $user **/
-            $user = Auth::user();
-
-            // saving wallet details to session
-            $wallet = wallet::where('account_email', $user->email)->first();
-
-            // Generate random OTP
-            $otp = mt_rand(100000, 999999);
-
-            // Store OTP in the database with the user's email
-            $user->otp = $otp;
-
-            // Send email to user containing the OTP
-            Mail::to($user->email)->send(new OtpVerificationMail($user->otp));
-
-            // inserting notifcation
-            $title = "Welcome back, {$user->name}";
-            $msg = 'You have successfully logged in.';
-            $notification = notifications::create([
-                'user_id' => $wallet->user_id,
-                'title' => $title,
-                'message' => $msg
+            // Validate the request data
+            $credentials = $request->validate([
+                'email' => 'required|string|email',
+                'password' => 'required|string',
             ]);
-            // Send notfication email to user containing the OTP
-            Mail::to($user->email)->send(new notificationMail($title, $msg));
-            // Create a Sanctum token
-            $token = $user->createToken('auth_token')->plainTextToken;
 
-            // Return success response
+            // Attempt to log the user in
+            if ($token = Auth::attempt($credentials)) {
+                // Authentication passed...
+                // Store user details in session
+                /** @var \App\Models\User $user **/
+                $user = Auth::user();
+
+                // saving wallet details to session
+                $wallet = wallet::where('account_email', $user->email)->first();
+
+                // Generate random OTP
+                $otp = mt_rand(100000, 999999);
+
+                // Store OTP in the database with the user's email
+                $user->otp = $otp;
+
+                // Send email to user containing the OTP
+                Mail::to($user->email)->send(new OtpVerificationMail($user->otp));
+
+                // inserting notifcation
+                $title = "Welcome back, {$user->name}";
+                $msg = 'You have successfully logged in.';
+                $notification = notifications::create([
+                    'user_id' => $wallet->user_id,
+                    'title' => $title,
+                    'message' => $msg
+                ]);
+                // Send notfication email to user containing the OTP
+                Mail::to($user->email)->send(new notificationMail($title, $msg));
+                // Create a Sanctum token
+                $token = $user->createToken('auth_token')->plainTextToken;
+
+                // Return success response
+                return response()->json([
+                    'otp' => $otp,
+                    'message' => 'Login successful',
+                    'user' => $user,
+                    'access_token' => $token,
+                    'token_type' => 'Bearer',
+                ], 200);
+            }
+
+            // Authentication failed...
             return response()->json([
-                'otp' => $otp,
-                'message' => 'Login successful',
-                'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ], 200);
-        }
+                'message' => 'Invalid credentials'
+            ], 401);
+        } catch (\Throwable $th) {
+            //throw $th;
 
-        // Authentication failed...
-        return response()->json([
-            'message' => 'Invalid credentials'
-        ], 401);
+            return response()->json([
+                'message' => $th
+            ], 401);
+        }
     }
 
     public function me()
@@ -1387,8 +1396,8 @@ class UserController extends Controller
                 ],
             ]);
 
-            
-        return json_decode(json: $transferResponse->getBody()->getContents(), associative: true);  
+
+            return json_decode(json: $transferResponse->getBody()->getContents(), associative: true);
             // return json_decode($transferResponse->getBody(), true);
         } catch (\Throwable $e) {
             # code...
