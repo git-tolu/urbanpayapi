@@ -904,127 +904,133 @@ class UserController extends Controller
             $wallet = wallet::where('account_email', "{$email}")->first();
             $wallet2 = wallet::where('account_number', "{$request->accountNumber}")->first();
             // $verifyBank =  $this->verifyBank($request);
-            $wa_d = $wallet['wallet_id'];
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI',
-                'accept' => 'application/json',
-                'content-type' => 'application/json',
-            ])->post('https://api.sandbox.sudo.cards/accounts/transfer', [
-                'debitAccountId' => $wa_d,  // Ensure $wa_d is properly set
-                'beneficiaryBankCode' => $request->bankIdOrBankCode,  // Validate if bankIdOrBankCode exists and is not null
-                'beneficiaryAccountNumber' => $request->accountNumber,  // Make sure accountNumber is valid
-                'amount' => $request->amount+00,  // Ensure the amount is a valid number
-                'narration' => $request->narration,  // Make sure narration is a valid string
-                'paymentReference' => $request->reference,  // Validate the reference field
+            if ($this->verifyBank($request)) {
+                $wa_d = $wallet['wallet_id'];
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI',
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json',
+                ])->post('https://api.sandbox.sudo.cards/accounts/transfer', [
+                    'debitAccountId' => $wa_d,  // Ensure $wa_d is properly set
+                    'beneficiaryBankCode' => $request->bankIdOrBankCode,  // Validate if bankIdOrBankCode exists and is not null
+                    'beneficiaryAccountNumber' => $request->accountNumber,  // Make sure accountNumber is valid
+                    'amount' => $request->amount + 00,  // Ensure the amount is a valid number
+                    'narration' => $request->narration,  // Make sure narration is a valid string
+                    'paymentReference' => $request->reference,  // Validate the reference field
 
-                // 'debitAccountId' => '6703c3fd2d602bf10576a801',
-                // 'beneficiaryBankCode' => '999240',
-                // 'beneficiaryAccountNumber' => '8028164720',
-                // 'amount' => 1000,
-                // 'narration' => 'string',
-                // 'paymentReference' => 'string',
-            ]);
-            $responseData = $response->json(); // Return the JSON response from the API
+                    // 'debitAccountId' => '6703c3fd2d602bf10576a801',
+                    // 'beneficiaryBankCode' => '999240',
+                    // 'beneficiaryAccountNumber' => '8028164720',
+                    // 'amount' => 1000,
+                    // 'narration' => 'string',
+                    // 'paymentReference' => 'string',
+                ]);
+                $responseData = $response->json(); // Return the JSON response from the API
 
-            $headers = [
-                'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
-                'accept' => 'application/json',
-                'content-type' => 'application/json',
-            ];
+                $headers = [
+                    'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json',
+                ];
 
-            $response2 = Http::withHeaders($headers)->get('https://api.sandbox.sudo.cards/accounts/' . $wallet['wallet_id'] . '/transactions?page=0&limit=100');
-            $response3 = Http::withHeaders($headers)->get('https://api.sandbox.sudo.cards/accounts/' . $wallet2['wallet_id'] . '/transactions?page=0&limit=100');
-            $responseData2 = $response2->json(); // Return the JSON response from the API
-            $responseData3 = $response3->json(); // Return the JSON response from the API
+                $response2 = Http::withHeaders($headers)->get('https://api.sandbox.sudo.cards/accounts/' . $wallet['wallet_id'] . '/transactions?page=0&limit=100');
+                $response3 = Http::withHeaders($headers)->get('https://api.sandbox.sudo.cards/accounts/' . $wallet2['wallet_id'] . '/transactions?page=0&limit=100');
+                $responseData2 = $response2->json(); // Return the JSON response from the API
+                $responseData3 = $response3->json(); // Return the JSON response from the API
 
-            $transaction = transaction::create([
-                'touser_id' => $wallet2['user_id'],
-                'toBank_code' => $request->bankIdOrBankCode,
-                'toBank_name' => $request->bank_name,
-                'toAccount_number' => $request->accountNumber,
-                'toAccount_name' => $request->account_name,
-                'user_id' => $session['user_id'],
-                'wallet_id' => $wallet['wallet_id'],
-                'transaction_id' => $wallet['transaction_id'],
-                'reference' => $request->reference,
-                'account_number' => $wallet['account_number'],
-                'account_name' => $wallet['account_name'],
-                'bank_code' => $wallet['bank_code'],
-                'bank_name' => $wallet['bank_name'],
-                'amount' => $request->amount,
-                'narration' => $request->narration,
-                'status' => 'success',
-            ]);
+                $transaction = transaction::create([
+                    'touser_id' => $wallet2['user_id'],
+                    'toBank_code' => $request->bankIdOrBankCode,
+                    'toBank_name' => $request->bank_name,
+                    'toAccount_number' => $request->accountNumber,
+                    'toAccount_name' => $request->account_name,
+                    'user_id' => $session['user_id'],
+                    'wallet_id' => $wallet['wallet_id'],
+                    'transaction_id' => $wallet['transaction_id'],
+                    'reference' => $request->reference,
+                    'account_number' => $wallet['account_number'],
+                    'account_name' => $wallet['account_name'],
+                    'bank_code' => $wallet['bank_code'],
+                    'bank_name' => $wallet['bank_name'],
+                    'amount' => $request->amount,
+                    'narration' => $request->narration,
+                    'status' => 'success',
+                ]);
 
-            $beneficiary = beneficiary::create([
-                'transfer_user_id' => $session['user_id'],
-                'wallet_id' => $wallet2['wallet_id'],
-                'transaction_id' => $wallet2['transaction_id'],
-                'reference' => $request->reference,
-                'bank_code' => $request->bankIdOrBankCode,
-                'bank_name' => $request->bank_name,
-                'account_number' => $request->accountNumber,
-                'account_name' => $request->account_name,
-                'urbanPayTag' => $wallet2['urbanPayTag'],
-            ]);
+                $beneficiary = beneficiary::create([
+                    'transfer_user_id' => $session['user_id'],
+                    'wallet_id' => $wallet2['wallet_id'],
+                    'transaction_id' => $wallet2['transaction_id'],
+                    'reference' => $request->reference,
+                    'bank_code' => $request->bankIdOrBankCode,
+                    'bank_name' => $request->bank_name,
+                    'account_number' => $request->accountNumber,
+                    'account_name' => $request->account_name,
+                    'urbanPayTag' => $wallet2['urbanPayTag'],
+                ]);
 
-            // fetching balance
-            $url = "https://api.sandbox.sudo.cards/accounts/" . $wallet['wallet_id'] . "/balance";
+                // fetching balance
+                $url = "https://api.sandbox.sudo.cards/accounts/" . $wallet['wallet_id'] . "/balance";
 
-            $response1 = Http::withHeaders([
-                'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
-                'accept' => 'application/json',
-                'content-type' => 'application/json',
-            ])->get($url);
+                $response1 = Http::withHeaders([
+                    'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json',
+                ])->get($url);
 
-            $responseData1 = $response1->json(); // Return the JSON response from the API
+                $responseData1 = $response1->json(); // Return the JSON response from the API
 
-            // fetching balance
-            $url = "https://api.sandbox.sudo.cards/accounts/" . $wallet2['wallet_id'] . "/balance";
-            $response4 = Http::withHeaders([
-                'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
-                'accept' => 'application/json',
-                'content-type' => 'application/json',
-            ])->get($url);
+                // fetching balance
+                $url = "https://api.sandbox.sudo.cards/accounts/" . $wallet2['wallet_id'] . "/balance";
+                $response4 = Http::withHeaders([
+                    'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json',
+                ])->get($url);
 
-            $responseData4 = $response4->json(); // Return the JSON response from the API
+                $responseData4 = $response4->json(); // Return the JSON response from the API
 
-            // inserting notifcation
-            $title = "Information on your chipper cash";
-            $msg = "Your payment of NGN {$request->amount} to " . $request->account_name . " has been processed successfully. Your new balance is NGN " . $responseData1['data']['currentBalance'] . " ";
-            $notification = notifications::create([
-                'user_id' => $session['user_id'],
-                'title' => $title,
-                'message' => $msg
-            ]);
-            Mail::to($email)->send(new notificationMail($title, $msg));
+                // inserting notifcation
+                $title = "Information on your chipper cash";
+                $msg = "Your payment of NGN {$request->amount} to " . $request->account_name . " has been processed successfully. Your new balance is NGN " . $responseData1['data']['currentBalance'] . " ";
+                $notification = notifications::create([
+                    'user_id' => $session['user_id'],
+                    'title' => $title,
+                    'message' => $msg
+                ]);
+                Mail::to($email)->send(new notificationMail($title, $msg));
 
-            // inserting notifcation
-            $title = "Information on your chipper cash";
-            $msg = "NGN {$request->amount} has been deposited in your wallet  Your new balance is NGN " . $responseData4['data']['currentBalance'] . " ";
-            $notification = notifications::create([
-                'user_id' => $wallet2['user_id'],
-                'title' => $title,
-                'message' => $msg
-            ]);
+                // inserting notifcation
+                $title = "Information on your chipper cash";
+                $msg = "NGN {$request->amount} has been deposited in your wallet  Your new balance is NGN " . $responseData4['data']['currentBalance'] . " ";
+                $notification = notifications::create([
+                    'user_id' => $wallet2['user_id'],
+                    'title' => $title,
+                    'message' => $msg
+                ]);
 
-            // Send notfication email to user 
-            Mail::to($wallet2['account_email'])->send(new notificationMail($title, $msg));
-            // update balance 
-            $wallet->balance = $responseData1['data']['currentBalance'];
-            $wallet->save();
+                // Send notfication email to user 
+                Mail::to($wallet2['account_email'])->send(new notificationMail($title, $msg));
+                // update balance 
+                $wallet->balance = $responseData1['data']['currentBalance'];
+                $wallet->save();
 
-            $wallet2->balance = $responseData4['data']['currentBalance'];
-            $wallet2->save();
+                $wallet2->balance = $responseData4['data']['currentBalance'];
+                $wallet2->save();
+                return response()->json([
+                    'data' => $responseData,
+                    'data1' => $responseData1,
+                    'data2' => $responseData2,
+                    'data3' => $responseData3,
+                    'data4' => $responseData4,
+                    // 'msg' =>   dd($request->all()),
+                    // 'data5' => $$verifyBank,
+                ], 500);
+            }
+            // Authentication failed...
             return response()->json([
-                'data' => $responseData,
-                'data1' => $responseData1,
-                'data2' => $responseData2,
-                'data3' => $responseData3,
-                'data4' => $responseData4,
-                // 'msg' =>   dd($request->all()),
-                // 'data5' => $$verifyBank,
-            ], 500);
+                'message' => 'Invalid credentials'
+            ], 401);
         } catch (\Throwable $e) {
             return response()->json([
                 'status' => false,
@@ -1067,8 +1073,8 @@ class UserController extends Controller
 
                 $email = $session['email'];
 
-                $wallet = wallet::where('account_email', "{$email}");
-                $wallet2 = wallet::where('urbanPayTag', "{$request->urbanPayTag}");
+                $wallet = wallet::where('account_email', "{$email}")->first();
+                $wallet2 = wallet::where('urbanPayTag', "{$request->urbanPayTag}")->first();
 
                 $url = 'https://api.sandbox.sudo.cards/accounts/transfer';
 
@@ -1084,7 +1090,7 @@ class UserController extends Controller
                     'creditAccountId' => $wallet2['wallet_id'],
                     'beneficiaryBankCode' => $request->input('bank_code'),
                     'beneficiaryAccountNumber' => $wallet2['account_number'],
-                    'amount' => $request->input('amount')+00,
+                    'amount' => $request->input('amount') + 00,
                     'narration' => $request->input('narration'),
                     'paymentReference' => $request->input('reference'),
                 ];
@@ -1106,7 +1112,8 @@ class UserController extends Controller
                     'wallet_id' => $wallet['wallet_id'],
                     'transaction_id' => $wallet['transaction_id'],
                     'reference' => $request->reference,
-                    'toBank_code' => $request->bankIdOrBankCode,
+                    'touser_id' => $wallet2['user_id'],
+                    'toBank_code' => $request->bank_code,
                     'toBank_name' => $wallet2['bank_name'],
                     'toAccount_number' => $request->accountNumber,
                     'toAccount_name' => $wallet2['account_name'],
@@ -1124,12 +1131,14 @@ class UserController extends Controller
                     'wallet_id' => $wallet2['wallet_id'],
                     'transaction_id' => $wallet2['transaction_id'],
                     'reference' => $request->reference,
-                    'bank_code' => $request->bankIdOrBankCode,
+                    'bank_code' => $request->bank_code,
                     'bank_name' => $wallet2['bank_name'],
                     'account_number' => $request->accountNumber,
                     'account_name' => $wallet2['account_name'],
                     'urbanPayTag' => $wallet2['urbanPayTag'],
                 ]);
+
+
 
                 // fetching balance
                 $url = "https://api.sandbox.sudo.cards/accounts/" . $wallet['wallet_id'] . "/balance";
