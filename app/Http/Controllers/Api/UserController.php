@@ -645,9 +645,6 @@ class UserController extends Controller
             ], 404);
         }
     }
-
-
-
     public function updateUserProfilePinVerify(Request $request)
     {
         $session = Auth::user();
@@ -913,21 +910,21 @@ class UserController extends Controller
                 'accept' => 'application/json',
                 'content-type' => 'application/json',
             ])->post('https://api.sandbox.sudo.cards/accounts/transfer', [
-                // 'debitAccountId' => "{$wa_d}",
-                // 'beneficiaryBankCode' =>  "{$request->bankIdOrBankCode}",
-                // 'beneficiaryAccountNumber' =>  "{$request->accountNumber}",
-                // 'amount' =>  "{$request->amount}",
-                // 'narration' =>  "{$request->narration}",
-                // 'paymentReference' =>  "{$request->reference}",
-                'debitAccountId' => '66ef0d52f587cea3044dae17',
-                'beneficiaryBankCode' => '999240',
-                'beneficiaryAccountNumber' => '8027002308',
-                'amount' => 1000,
-                'narration' => 'string',
-                'paymentReference' => 'string',
+                'debitAccountId' => $wa_d,  // Ensure $wa_d is properly set
+                'beneficiaryBankCode' => $request->bankIdOrBankCode,  // Validate if bankIdOrBankCode exists and is not null
+                'beneficiaryAccountNumber' => $request->accountNumber,  // Make sure accountNumber is valid
+                'amount' => $request->amount+00,  // Ensure the amount is a valid number
+                'narration' => $request->narration,  // Make sure narration is a valid string
+                'paymentReference' => $request->reference,  // Validate the reference field
+
+                // 'debitAccountId' => '6703c3fd2d602bf10576a801',
+                // 'beneficiaryBankCode' => '999240',
+                // 'beneficiaryAccountNumber' => '8028164720',
+                // 'amount' => 1000,
+                // 'narration' => 'string',
+                // 'paymentReference' => 'string',
             ]);
             $responseData = $response->json(); // Return the JSON response from the API
-
 
             $headers = [
                 'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI', // Replace with your actual API key
@@ -1025,6 +1022,7 @@ class UserController extends Controller
                 'data2' => $responseData2,
                 'data3' => $responseData3,
                 'data4' => $responseData4,
+                // 'msg' =>   dd($request->all()),
                 // 'data5' => $$verifyBank,
             ], 500);
         } catch (\Throwable $e) {
@@ -1056,7 +1054,7 @@ class UserController extends Controller
 
             // get acount details
             $wallets = DB::table('wallets')
-                ->where('urbanPayTag', '=', $request->urbanPayTag)
+                ->where('urbanPayTag', '=', "{$request->urbanPayTag}")
                 ->get();
 
             // $request->accountNumber = $wallets['account_number'];
@@ -1069,8 +1067,8 @@ class UserController extends Controller
 
                 $email = $session['email'];
 
-                $wallet = wallet::where('account_email', $email);
-                $wallet2 = wallet::where('account_number', $wallets['account_number']);
+                $wallet = wallet::where('account_email', "{$email}");
+                $wallet2 = wallet::where('urbanPayTag', "{$request->urbanPayTag}");
 
                 $url = 'https://api.sandbox.sudo.cards/accounts/transfer';
 
@@ -1086,7 +1084,7 @@ class UserController extends Controller
                     'creditAccountId' => $wallet2['wallet_id'],
                     'beneficiaryBankCode' => $request->input('bank_code'),
                     'beneficiaryAccountNumber' => $wallet2['account_number'],
-                    'amount' => $request->input('amount'),
+                    'amount' => $request->input('amount')+00,
                     'narration' => $request->input('narration'),
                     'paymentReference' => $request->input('reference'),
                 ];
