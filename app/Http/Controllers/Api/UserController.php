@@ -1233,7 +1233,7 @@ class UserController extends Controller
 
             $email = $session['email'];
 
-            $wallet = wallet::where('account_email', $email);
+            $wallet = wallet::where('account_email', $email)->first();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb0B1c2V1cmJhbnBheS5jb20iLCJqdGkiOiI2NjdlZTYyZjU3YzFiMjBiYTI2YTE1MmQiLCJtZW1iZXJzaGlwIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMzMyIsImJ1c2luZXNzIjp7Il9pZCI6IjY0ZGFhZjhlNThjMGE1ZjRhYmE0ZGMyZSIsIm5hbWUiOiJVUkJBTiBVTklWRVJTRSBMSU1JVEVEIiwiaXNBcHByb3ZlZCI6dHJ1ZX0sInVzZXIiOiI2NGRhYWY4ZTU4YzBhNWY0YWJhNGRjMzAiLCJyb2xlIjoiQVBJS2V5In0sImlhdCI6MTcxOTU5MjQ5NSwiZXhwIjoxNzUxMTUwMDk1fQ.ZeHZHsbRn-o3cVeO3cjCuHld5ET4Nq8ft9wTPoGxDcI',
@@ -1267,7 +1267,7 @@ class UserController extends Controller
 
             $email = $session['email'];
 
-            $wallet = wallet::where('account_email', $email);
+            $wallet = wallet::where('account_email', $email)->first();
 
             // $acct_id = $request->session()->get('wallet_id');
             // $validatedData['transactionId'] = $acct_id;
@@ -1452,11 +1452,11 @@ class UserController extends Controller
             $body = [
                 // "customerId" => "{$user_id}",
                 // "debitAccountId" => "{$wallet_id}",
-                // "amount" => "1000",
-                // "brand" => "Verve",
-                // "type" => "virtual",
-                // "currency" => "NGN",
-                // "status" => "active",
+                // "amount" => $request->amount,
+                // "brand" => $request->brand,
+                // "type" => $request->type,
+                // "currency" => $request->currency,
+                // "status" => $request->status,
                 "customerId" => "66c2192e5489e39564225694",
                 "debitAccountId" => "66c219305489e395642256a6",
                 "amount" => "1000",
@@ -1464,6 +1464,7 @@ class UserController extends Controller
                 "type" => "virtual",
                 "currency" => "NGN",
                 "status" => "active",
+                "metadata"=> []
             ];
 
             $response = Http::withHeaders([
