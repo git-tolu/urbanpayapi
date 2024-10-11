@@ -1,34 +1,35 @@
-# Build stage (install dependencies)
-FROM php:8.1-fpm
+# Use the official PHP image with Apache server
+FROM php:8.2-apache
 
-WORKDIR /var/www/html
-
-# Install system dependencies
+# Install required extensions
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
+    libzip-dev \
     zip \
     unzip \
-    git \
-    curl \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    libpng-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd pdo pdo_mysql zip
 
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
 
-# Copy app files
+# Set the working directory inside the container
+WORKDIR /var/www/html
+
+# Copy project files
 COPY . .
 
 # Install Composer dependencies
-RUN composer install --optimize-autoloader --no-dev
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN composer install --no-dev --optimize-autoloader
 
-# Expose port
-EXPOSE 9000
+# Set permissions for Laravel storage and cache directories
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Start the server
-CMD php artisan serve --host=0.0.0.0 --port=9000
+# Expose port 80 for the webserver
+EXPOSE 80
+
+# Run Apache in the foreground
+CMD ["apache2-foreground"]
