@@ -11,7 +11,7 @@ services:
     environment:
       - APP_ENV=local
       - APP_DEBUG=true
-      - APP_KEY=base64:your_laravel_app_key
+      - APP_KEY=base64:VTUpI4sMd+279unpDoLHj7gkzedBc63Lu3hMfbH0dl4=
     depends_on:
       - mysql
     networks:
@@ -22,10 +22,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_DATABASE: your_db
+      MYSQL_DATABASE: urbanPayApi
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: your_user
-      MYSQL_PASSWORD: your_password
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
