@@ -1450,21 +1450,20 @@ class UserController extends Controller
 
 
             $body = [
-                // "customerId" => "{$user_id}",
-                // "debitAccountId" => "{$wallet_id}",
-                // "amount" => $request->amount,
-                // "brand" => $request->brand,
-                // "type" => $request->type,
-                // "currency" => $request->currency,
-                // "status" => $request->status,
-                "customerId" => "66c2192e5489e39564225694",
-                "debitAccountId" => "66c219305489e395642256a6",
-                "amount" => "1000",
-                "brand" => "Verve",
-                "type" => "virtual",
-                "currency" => "NGN",
-                "status" => "active",
-                "metadata"=> []
+                "customerId" => "{$user_id}",
+                "debitAccountId" => "{$wallet_id}",
+                "amount" => "$request->amount",
+                "brand" => "$request->brand",
+                "type" => "$request->type",
+                "currency" => "$request->currency",
+                "status" => "$request->status",
+                // "customerId" => "6703c3fb2d602bf10576a7ef",
+                // "debitAccountId" => "6703c3fd2d602bf10576a801",
+                // "amount" => "1000",
+                // "brand" => "Verve",
+                // "type" => "virtual",
+                // "currency" => "NGN",
+                // "status" => "active",
             ];
 
             $response = Http::withHeaders([
@@ -1473,28 +1472,28 @@ class UserController extends Controller
                 'content-type' => 'application/json',
             ])->post($url, $body);
             $responseData = $response->json(); // Return JSON response from the API
-            $wallet->card_id = $responseData['_id'];
-            $wallet->save();
+            // $wallet->card_id = $responseData['_id'];
+            // $wallet->save();
 
-            $card = card::create([
-                'card_id' => $responseData['_id'],
-                'user_id' => $responseData['user_id'],
-                'wallet_id' => $responseData['wallet_id'],
-                'fundingSource' => $responseData['fundingSource'],
-                'type' => $responseData['type'],
-                'currency' => $responseData['currency'],
-                'maskedPan' => $responseData['maskedPan'],
-                'expiryMonth' => $responseData['expiryMonth'],
-                'expiryYear' => $responseData['expiryYear'],
-                'status' => $responseData['status'],
-                'is2FAEnrolled' => $responseData['is2FAEnrolled'],
-                'isDefaultPINChanged' => $responseData['isDefaultPINChanged'],
-                'disposable' => $responseData['disposable'],
-                'refundAccount' => $responseData['refundAccount'],
-                'isDeleted' => $responseData['isDeleted'],
-                'createdAt' => $responseData['createdAt'],
-                'updatedAt' => $responseData['updatedAt'],
-            ]);
+            // $card = card::create([
+            //     'card_id' => $responseData['_id'],
+            //     'user_id' => $responseData['user_id'],
+            //     'wallet_id' => $responseData['wallet_id'],
+            //     'fundingSource' => $responseData['fundingSource'],
+            //     'type' => $responseData['type'],
+            //     'currency' => $responseData['currency'],
+            //     'maskedPan' => $responseData['maskedPan'],
+            //     'expiryMonth' => $responseData['expiryMonth'],
+            //     'expiryYear' => $responseData['expiryYear'],
+            //     'status' => $responseData['status'],
+            //     'is2FAEnrolled' => $responseData['is2FAEnrolled'],
+            //     'isDefaultPINChanged' => $responseData['isDefaultPINChanged'],
+            //     'disposable' => $responseData['disposable'],
+            //     'refundAccount' => $responseData['refundAccount'],
+            //     'isDeleted' => $responseData['isDeleted'],
+            //     'createdAt' => $responseData['createdAt'],
+            //     'updatedAt' => $responseData['updatedAt'],
+            // ]);
             // $request->session()->put('card_id', $responseData['name']);
 
             return $response->json(); // Return the JSON response from the API

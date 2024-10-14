@@ -31,5 +31,6 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 # Expose port 80 for the webserver
 EXPOSE 80
 
+
 # Run Apache in the foreground
 CMD ["apache2-foreground"]
